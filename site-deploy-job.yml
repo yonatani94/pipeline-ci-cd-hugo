@@ -1,0 +1,88 @@
+# Azure DevOps Build Pipeline
+#
+# This job template is used in the deploy stage. It does the following:
+# 1. Downloads Hugo executable from published artifacts
+# 2. Downloads built site codebase from published artifacts
+# 3. Installs Hugo executable
+# 4. Extracts the zip'd site codebase
+# 5. Executes Hugo `deploy` command to publish all files to Azure Storage blob
+
+
+
+parameters:
+  # unique name of the job
+  name: ''
+  # friendly name of the job
+  displayName: ''
+  # Azure Storage Account name & access key where site is deployed
+  storageAccountName: ''
+  storageAccountKey: ''
+  # Unique tag for site type
+  build_tag: ''
+  deploy_site: ''
+  containerName: ''
+  subscriptionId: ''
+  subscriptionName: ''
+  clientId: ''
+  clientSecret: ''
+  IsCdnRequired: ''
+  envType: ''
+  SecretsFilter: ''
+  pattern: ''
+jobs:
+- deployment: ${{ parameters.envType }}_microfrontend_deploy
+  displayName: ${{ parameters.displayName }}
+  pool:
+    vmImage: ubuntu-latest
+
+  environment: ${{ parameters.envType }}
+  strategy:
+    runOnce: 
+      deploy:
+        steps:
+           # 0. get all relvant keyvaults for deploy 
+        - template: shared/get-artifacts-token-from-azure-keyvault.yml
+          parameters:
+            SecretsFilter: '<PLACEHOLDER>' 
+        # 1. Downloads Hugo executable from published artifacts
+        - download: current
+          artifact: hugo-installer
+        # 2. Downloads built site codebase from published artifacts
+        - download: current
+          artifact: build-${{ parameters.build_tag }}
+        # 3. Installs Hugo executable
+        - script: 'sudo dpkg -i hugo*.deb'
+          workingDirectory: '$(Pipeline.Workspace)/hugo-installer'
+          displayName: 'Install Hugo'
+        # 4. Extracts the zip'd site codebase
+        - task: ExtractFiles@1
+          displayName: 'Extract files '
+          inputs:
+            archiveFilePatterns: '$(Pipeline.Workspace)/build-${{ parameters.build_tag }}/hugo-build.zip'
+            destinationFolder: '$(Pipeline.Workspace)/build-${{ parameters.build_tag }}/deploy'
+            cleanDestinationFolder: false
+           # 5. Delete all files from az-storage
+        - template: shared/az-storage-blob-delete-batch.yml
+          parameters:
+            storageName: ${{ parameters.storageAccountName }}
+            accountKey: ${{ parameters.storageAccountKey }}
+            pattern: '**'
+            # 6. if CDN is Avilable so purge the cdn 
+        - ${{ if eq(parameters.IsCdnRequired, true) }}:
+          - template: shared/az-cdn-endpoint-purge.yml
+            parameters:
+              subscriptionName: ${{ parameters.subscriptionName }}
+              subscriptionId: ${{ parameters.subscriptionId }}
+              resourceGroupName: ${{ parameters.cdnResourceGroupName }}
+              cdnEndpoint: ${{ parameters.cdnEndpoint }}
+              cdnProfileName: ${{ parameters.cdnProfileName }}
+              contentPaths: "'/*'"               
+            # 7. Executes Hugo `deploy` command to publish all files to Azure Storage blob    
+        - script: 'hugo deploy azure --maxDeletes -1'
+          condition: eq(${{ parameters.deploy_site }}, 'true')
+          workingDirectory: '$(Pipeline.Workspace)/build-${{ parameters.build_tag }}/deploy'
+          displayName: 'Deploy build to site'
+          env:
+              AZURE_STORAGE_ACCOUNT: ${{ parameters.storageAccountName }}
+              AZURE_STORAGE_KEY: ${{ parameters.storageAccountKey }}
+          

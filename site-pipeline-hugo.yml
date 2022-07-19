@@ -1,0 +1,82 @@
+
+stages:
+# build stage: build site codebase to use for deployment
+- stage: build
+  jobs:
+    - template: site-build-job.yml@templates
+      parameters:
+        name: build_live_site
+        displayName: Build Live Documentaion Site 
+        hugo_version: 0.99.1
+        hugo_config_baseUrl:  <PLACEHOLDER>
+        hugo_config_flags: '--minify'
+        build_tag: v1
+
+ # deploy dev stage - runs automatically after build finishes  
+- stage: dev
+  dependsOn: build
+  jobs:
+    - template: site-deploy-job.yml@templates
+      parameters:
+        name: deploy_to_dev
+        displayName: Deploy Live Documentaion Site Dev
+        storageAccountName:  <PLACEHOLDER> 
+        storageAccountKey:   <PLACEHOLDER> 
+        build_tag: v1   
+        deploy_site: true
+        containerName: $web
+        clientId:  <PLACEHOLDER> 
+        clientSecret:  <PLACEHOLDER>
+        subscriptionId:  <PLACEHOLDER>
+        subscriptionName:  <PLACEHOLDER>
+        cdnResourceGroupName:  <PLACEHOLDER>
+        cdnEndpoint:   <PLACEHOLDER>
+        cdnProfileName:  <PLACEHOLDER>
+        IsCdnRequired: true
+        envType: dev
+- stage: qa
+  condition: eq(variables['Build.Reason'], 'Manual')
+  dependsOn: build
+  jobs:
+    - template: site-deploy-job.yml@templates
+      parameters:
+        name: deploy_to_qa
+        displayName: Deploy Live Documentaion Site QA
+        storageAccountName:  <PLACEHOLDER> 
+        storageAccountKey:   <PLACEHOLDER> 
+        build_tag: v1   
+        deploy_site: true
+        containerName: $web
+        clientId:  <PLACEHOLDER> 
+        clientSecret:  <PLACEHOLDER>
+        subscriptionId:  <PLACEHOLDER>
+        subscriptionName:  <PLACEHOLDER>
+        cdnResourceGroupName:  <PLACEHOLDER>
+        cdnEndpoint:   <PLACEHOLDER>
+        cdnProfileName:  <PLACEHOLDER>
+        IsCdnRequired: true
+        envType: qa
+
+- stage: prod_glob
+  condition: eq(variables['Build.Reason'], 'Manual')
+  dependsOn: build
+  jobs:
+    - template: site-deploy-job.yml@templates
+      parameters:
+        name: deploy_to_prod
+        displayName: Deploy Live Documentaion Site Prod    
+        storageAccountName:  <PLACEHOLDER> 
+        storageAccountKey:   <PLACEHOLDER> 
+        build_tag: v1   
+        deploy_site: true
+        containerName: $web
+        clientId:  <PLACEHOLDER> 
+        clientSecret:  <PLACEHOLDER>
+        subscriptionId:  <PLACEHOLDER>
+        subscriptionName:  <PLACEHOLDER>
+        cdnResourceGroupName:  <PLACEHOLDER>
+        cdnEndpoint:   <PLACEHOLDER>
+        cdnProfileName:  <PLACEHOLDER>
+        IsCdnRequired: true
+        envType: prod
+        

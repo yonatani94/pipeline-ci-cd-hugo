@@ -1,0 +1,22 @@
+parameters:
+  - name: azureSubscription
+    type: string
+    default: '<PLACEHOLDER>'
+  - name: KeyVaultName
+    type: string
+    default: ' <PLACEHOLDER>'
+  - name: SecretsFilter
+    type: string
+    default: '*'
+  - name: RunAsPreJob
+    type: boolean
+    default: false
+
+steps:
+- task: AzureKeyVault@2
+  inputs:
+    azureSubscription: ${{ parameters.azureSubscription }}
+    KeyVaultName:      ${{ parameters.KeyVaultName }}
+    SecretsFilter:     ${{ parameters.SecretsFilter }}
+    RunAsPreJob:       ${{ parameters.RunAsPreJob }}
+  displayName: 'get keyvault secrets'

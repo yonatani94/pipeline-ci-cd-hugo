@@ -1,0 +1,15 @@
+parameters:
+- name: containerName
+  type: string
+  default: '$web'
+- name: storageName
+  type: string
+- name: accountKey
+  type: string
+- name: pattern
+  type: string
+  default: ''
+steps:
+- bash: az storage blob delete-batch --source '${{ parameters.containerName }}' --account-name ${{ parameters.storageName }} --account-key ${{ parameters.accountKey }} --pattern '${{ parameters.pattern }}' --verbose
+  displayName: storage blob delete ${{ parameters.pattern }}
+  continueOnError: true
